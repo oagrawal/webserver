@@ -1,0 +1,6 @@
+to run server: 
+cd server
+cargo run
+
+port forwarding:
+7878
