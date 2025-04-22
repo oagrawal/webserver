@@ -6,7 +6,8 @@ use std::{
     time::Duration,
 };
 
-use server::ThreadPool;
+// use server::ThreadPool;
+use server::LockFreeThreadPool;
 
 
 // // one thread per request
@@ -22,17 +23,37 @@ use server::ThreadPool;
 //     }
 // }
 
-// thread pool implementation
+// thread pool LOCKED implementation
+// fn main() {
+//     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+//     let pool = ThreadPool::new(4);
+
+//     for stream in listener.incoming().take(2) {
+//         let stream = stream.unwrap();
+
+//         pool.execute(|| {
+//             handle_connection(stream);
+//         });
+//     }
+
+//     println!("Shutting down.");
+// }
+
+
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::new(4);
+    let pool = LockFreeThreadPool::new(4, 100); // 4 threads, queue capacity of 100
 
-    for stream in listener.incoming().take(2) {
+    // for stream in listener.incoming().take(2) {
+    for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        pool.execute(|| {
+        match pool.execute(|| {
             handle_connection(stream);
-        });
+        }) {
+            Ok(()) => {},
+            Err(()) => println!("Queue full, connection rejected"),
+        }
     }
 
     println!("Shutting down.");
@@ -47,7 +68,7 @@ fn handle_connection(mut stream: TcpStream) {
     let (status_line, filename) = match &request_line[..] {
         "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "response.html"),
         "GET /sleep HTTP/1.1" => {
-            thread::sleep(Duration::from_secs(5));
+            thread::sleep(Duration::from_secs(10));
             ("HTTP/1.1 200 OK", "response.html")
         }
         _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
