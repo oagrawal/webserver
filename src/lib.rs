@@ -1,3 +1,5 @@
+mod queue;
+
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
@@ -89,7 +91,9 @@ impl Worker {
 }
 
 // Lock-free implementation
-use crossbeam::queue::ArrayQueue;
+// use crossbeam::queue::ArrayQueue;
+use crate::queue::ArrayQueue;
+
 
 pub struct LockFreeThreadPool {
     workers: Vec<LockFreeWorker>,
