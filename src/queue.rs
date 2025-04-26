@@ -63,7 +63,6 @@ impl<T> ArrayQueue<T> {
 
     /// Attempts to push an element into the queue
     pub fn push(&self, value: T) -> Result<(), T> {
-        let backoff = Backoff::new();
         let mut tail = self.tail.load(Ordering::Relaxed);
 
         loop {
@@ -105,7 +104,6 @@ impl<T> ArrayQueue<T> {
                     Err(t) => {
                         // Another thread moved the tail, try again
                         tail = t;
-                        backoff.spin();
                     }
                 }
             } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
@@ -118,11 +116,9 @@ impl<T> ArrayQueue<T> {
                     return Err(value);
                 }
 
-                backoff.spin();
                 tail = self.tail.load(Ordering::Relaxed);
             } else {
                 // We need to wait for the stamp to get updated
-                backoff.snooze();
                 tail = self.tail.load(Ordering::Relaxed);
             }
         }
@@ -130,7 +126,6 @@ impl<T> ArrayQueue<T> {
 
     /// Attempts to pop an element from the queue
     pub fn pop(&self) -> Option<T> {
-        let backoff = Backoff::new();
         let mut head = self.head.load(Ordering::Relaxed);
 
         loop {
@@ -173,7 +168,6 @@ impl<T> ArrayQueue<T> {
                     Err(h) => {
                         // Another thread moved the head, try again
                         head = h;
-                        backoff.spin();
                     }
                 }
             } else if stamp == head {
@@ -186,11 +180,9 @@ impl<T> ArrayQueue<T> {
                     return None;
                 }
 
-                backoff.spin();
                 head = self.head.load(Ordering::Relaxed);
             } else {
                 // We need to wait for the stamp to get updated
-                backoff.snooze();
                 head = self.head.load(Ordering::Relaxed);
             }
         }
@@ -257,57 +249,6 @@ impl<T> Drop for ArrayQueue<T> {
 impl<T> fmt::Debug for ArrayQueue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("ArrayQueue { .. }")
-    }
-}
-
-// Backoff implementation for efficient spinning
-const SPIN_LIMIT: u32 = 6;
-const YIELD_LIMIT: u32 = 10;
-
-pub struct Backoff {
-    step: Cell<u32>,
-}
-
-impl Backoff {
-    #[inline]
-    pub fn new() -> Self {
-        Self { step: Cell::new(0) }
-    }
-
-    #[inline]
-    pub fn reset(&self) {
-        self.step.set(0);
-    }
-
-    #[inline]
-    pub fn spin(&self) {
-        for _ in 0..1 << self.step.get().min(SPIN_LIMIT) {
-            std::hint::spin_loop();
-        }
-
-        if self.step.get() <= SPIN_LIMIT {
-            self.step.set(self.step.get() + 1);
-        }
-    }
-
-    #[inline]
-    pub fn snooze(&self) {
-        if self.step.get() <= SPIN_LIMIT {
-            for _ in 0..1 << self.step.get() {
-                std::hint::spin_loop();
-            }
-        } else {
-            std::thread::yield_now();
-        }
-
-        if self.step.get() <= YIELD_LIMIT {
-            self.step.set(self.step.get() + 1);
-        }
-    }
-
-    #[inline]
-    pub fn is_completed(&self) -> bool {
-        self.step.get() > YIELD_LIMIT
     }
 }
 
