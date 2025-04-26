@@ -37,19 +37,8 @@ fn main() {
             }
         },
         "2" => {
-            // Lock-based queue with thread-per-connection
-            println!("Running implementation 2: Lock-based queue with thread-per-connection");
-            
-            for stream in listener.incoming() {
-                let stream = stream.unwrap();
-                thread::spawn(|| {
-                    handle_connection(stream);
-                });
-            }
-        },
-        "3" => {
             // Lock-based queue with thread pool
-            println!("Running implementation 3: Lock-based queue with thread pool");
+            println!("Running implementation 2: Lock-based queue with thread pool");
             let pool = ThreadPool::new(4);
             
             for stream in listener.incoming() {
@@ -59,12 +48,10 @@ fn main() {
                 });
             }
         },
-        "4" => {
-            // Lock-free queue with thread-per-connection
-            println!("Running implementation 4: Lock-free queue with thread-per-connection");
+        "3" => {
+            // thread-per-connection
+            println!("Running implementation 3: thread-per-connection");
             
-            // This is a bit of a hybrid approach since there's no queue in thread-per-connection
-            // but we'll implement it for completeness
             for stream in listener.incoming() {
                 let stream = stream.unwrap();
                 thread::spawn(|| {
@@ -73,7 +60,7 @@ fn main() {
             }
         },
         _ => {
-            println!("Invalid implementation number. Choose 1-4.");
+            println!("Invalid implementation number. Choose 1-3.");
             return;
         }
     }
