@@ -137,10 +137,12 @@ impl LockFreeThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        // Try to push the job to the queue, return Err if queue is full
         match self.job_queue.push(job) {
             Ok(()) => Ok(()),
-            Err(_) => Err(()),
+            Err(_) => {
+                eprintln!("Queue is full, rejecting job");
+                Err(())
+            },
         }
     }
 }
