@@ -8,3 +8,5 @@ port forwarding:
 cargo run -- 1  # Run implementation 1:     Lock-free queue with thread pool
 cargo run -- 2  # Running implementation 2: Lock-based queue with thread pool
 cargo run -- 3  # Run implementation 3:     Thread-per-connection
+
+cargo run -- 2 -w 100 -q 10
