@@ -203,7 +203,7 @@ fn handle_connection(mut stream: TcpStream) {
         ("HTTP/1.1 200 OK", result)
     } else if request_line.starts_with("GET /sleep ") {
         // 3. IO-Bound Workload Test - Blocking sleep operation
-        thread::sleep(Duration::from_secs(5));  // 5 second sleep
+        thread::sleep(Duration::from_secs(1));  // 5 second sleep
         let contents = fs::read_to_string("response.html").unwrap();
         ("HTTP/1.1 200 OK", contents)
     } else if request_line.starts_with("GET /mixed ") {
@@ -232,7 +232,7 @@ fn handle_connection(mut stream: TcpStream) {
             },
             _ => {
                 // IO-bound - sleep
-                thread::sleep(Duration::from_secs(5));
+                thread::sleep(Duration::from_secs(1));
                 let contents = fs::read_to_string("response.html").unwrap();
                 ("HTTP/1.1 200 OK", format!("Mixed workload (I/O): Completed after sleep"))
             }
