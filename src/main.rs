@@ -22,6 +22,18 @@ fn main() {
     
     match implementation {
         "1" => {
+            // sequential: single-threaded thread pool
+            println!("Running implementation 1: Sequential (single-threaded thread pool)");
+            let pool = ThreadPool::new(1);
+            
+            for stream in listener.incoming() {
+                let stream = stream.unwrap();
+                pool.execute(|| {
+                    handle_connection(stream);
+                });
+            }
+        },
+        "2" => {
             // Lock-free queue with thread pool
             println!("Running implementation 1: Lock-free queue with thread pool");
             let pool = LockFreeThreadPool::new(4, 100);
@@ -33,7 +45,7 @@ fn main() {
                 });
             }
         },
-        "2" => {
+        "3" => {
             // Lock-based queue with thread pool
             println!("Running implementation 2: Lock-based queue with thread pool");
             let pool = ThreadPool::new(4);
@@ -45,7 +57,7 @@ fn main() {
                 });
             }
         },
-        "3" => {
+        "4" => {
             // thread-per-connection
             println!("Running implementation 3: thread-per-connection");
             
@@ -57,7 +69,7 @@ fn main() {
             }
         },
         _ => {
-            println!("Invalid implementation number. Choose 1-3.");
+            println!("Invalid implementation number. Choose 1-4.");
             return;
         }
     }
