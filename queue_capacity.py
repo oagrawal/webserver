@@ -21,28 +21,34 @@ def get_time_taken_for_tests(cargo_args):
     try:
         # Run benchmark
         print("Running benchmark...")
-        result = subprocess.run(
-            "ab -n 10000 -c 10 -s 30 http://localhost:7878/", 
-            shell=True, 
-            capture_output=True, 
-            text=True
-        )
-        
-        if result.returncode != 0:
-            print(f"Benchmark failed with return code {result.returncode}")
-            print(f"Error: {result.stderr}")
-            return None
-        
-        # Extract time taken
-        match = re.search(r"Time taken for tests:\s*([0-9]*\.?[0-9]+) seconds", result.stdout)
-        if match:
-            time_taken = float(match.group(1))
-            print(f"Extracted time: {time_taken} seconds")
-            return time_taken
-        else:
-            print("Could not extract time from output. Output excerpt:")
-            print(result.stdout[:500])
-            return None
+    
+        total = 0
+        for i in range(3):
+            result = subprocess.run(
+                "ab -n 10000 -c 10 -s 30 http://localhost:7878/", 
+                shell=True, 
+                capture_output=True, 
+                text=True
+            )
+            
+            if result.returncode != 0:
+                print(f"Benchmark failed with return code {result.returncode}")
+                print(f"Error: {result.stderr}")
+                return None
+            
+            # Extract time taken
+            match = re.search(r"Time taken for tests:\s*([0-9]*\.?[0-9]+) seconds", result.stdout)
+            if match:
+                time_taken = float(match.group(1))
+                print(f"Extracted time: {time_taken} seconds")
+                # return time_taken
+                total += time_taken
+            else:
+                print("Could not extract time from output. Output excerpt:")
+                print(result.stdout[:500])
+                return None
+        return total / 3  # Return average time taken
+    
     finally:
         # Always terminate the server
         print("Terminating server...")
