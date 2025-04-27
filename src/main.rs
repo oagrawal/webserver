@@ -11,12 +11,80 @@ use server::{LockFreeThreadPool, ThreadPool};
 
 fn main() {
     // Parse command line arguments
+    // Default values
+    let mut implementation = "1"; // Default to implementation 1
+    let mut workers = 8;          // Default worker count
+    let mut queue_size = 100;     // Default queue size
+
+    // Parse command line arguments
     let args: Vec<String> = env::args().collect();
-    let implementation = if args.len() > 1 {
-        args[1].as_str()
-    } else {
-        "1" // Default to implementation 1 if no argument provided
-    };
+    let mut i = 1;
+
+    while i < args.len() {
+        match args[i].as_str() {
+            "-w" | "--workers" => {
+                if i + 1 < args.len() {
+                    match args[i + 1].parse::<usize>() {
+                        Ok(w) if w > 0 => {
+                            workers = w;
+                            i += 2;
+                        },
+                        _ => {
+                            println!("Error: Worker count must be a positive number");
+                            println!("Usage: {} [implementation] [-w|--workers N] [-q|--queue-size N]", args[0]);
+                            return;
+                        }
+                    }
+                } else {
+                    println!("Error: Missing value for workers");
+                    return;
+                }
+            },
+            "-q" | "--queue-size" => {
+                if i + 1 < args.len() {
+                    match args[i + 1].parse::<usize>() {
+                        Ok(q) if q > 0 => {
+                            queue_size = q;
+                            i += 2;
+                        },
+                        _ => {
+                            println!("Error: Queue size must be a positive number");
+                            return;
+                        }
+                    }
+                } else {
+                    println!("Error: Missing value for queue size");
+                    return;
+                }
+            },
+            "-h" | "--help" => {
+                println!("Usage: {} [implementation] [-w|--workers N] [-q|--queue-size N]", args[0]);
+                println!("Implementations:");
+                println!("  1: Sequential (single-threaded thread pool)");
+                println!("  2: Lock-free queue with thread pool");
+                println!("  3: Lock-based queue with thread pool");
+                println!("  4: Thread-per-connection");
+                println!("Options:");
+                println!("  -w, --workers N    Number of worker threads (default: 4)");
+                println!("  -q, --queue-size N Size of job queue for lock-free implementation (default: 100)");
+                return;
+            },
+            imp if !imp.starts_with('-') => {
+                // Positional argument for implementation
+                implementation = imp;
+                i += 1;
+            },
+            _ => {
+                println!("Unknown option: {}", args[i]);
+                println!("Usage: {} [implementation] [-w|--workers N] [-q|--queue-size N]", args[0]);
+                return;
+            }
+        }
+    }
+
+    println!("Using implementation {}, {} worker threads, queue size of {}", 
+            &implementation, &workers, &queue_size);
+
 
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     
@@ -36,7 +104,7 @@ fn main() {
         "2" => {
             // Lock-free queue with thread pool
             println!("Running implementation 1: Lock-free queue with thread pool");
-            let pool = LockFreeThreadPool::new(4, 100);
+            let pool = LockFreeThreadPool::new(workers, queue_size);
             
             for stream in listener.incoming() {
                 let stream = stream.unwrap();
@@ -48,7 +116,7 @@ fn main() {
         "3" => {
             // Lock-based queue with thread pool
             println!("Running implementation 2: Lock-based queue with thread pool");
-            let pool = ThreadPool::new(4);
+            let pool = ThreadPool::new(workers);
             
             for stream in listener.incoming() {
                 let stream = stream.unwrap();
