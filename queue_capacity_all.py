@@ -14,10 +14,8 @@ def get_time_taken_for_tests(cargo_args, command):
         stderr=subprocess.DEVNULL
     ) 
 
-    
-    
     # Wait for server to start
-    time.sleep(2)
+    time.sleep(5)
     
     try:
         # Run benchmark
@@ -26,9 +24,11 @@ def get_time_taken_for_tests(cargo_args, command):
         total = 0
         num_tries = 1
         for i in range(num_tries):
+            # Split command into arguments for subprocess.run
+            command_args = command.split()
+
             result = subprocess.run(
-                command, 
-                shell=True, 
+                command_args,  # Pass the command as a list of arguments
                 capture_output=True, 
                 text=True
             )
@@ -67,16 +67,17 @@ def main():
     warm_up_time = get_time_taken_for_tests(["1"], "ab -n 100 -c 10 http://localhost:7878/")
     if warm_up_time:
         print(f"Warm-up completed in {warm_up_time} seconds")
-    cs = ["ab -n 10000 -c 100 -s 30 http://localhost:7878/",
-          "ab -n 10000 -c 100 -s 30 http://localhost:7878/cpu",
-          "ab -n 50 -c 8 http://localhost:7878/sleep",
-        "ab -n 50 -c 8 http://localhost:7878/mixed"]
+    # cs = {
+    #     "Root API": "ab -r -n 10000 -c 100  http://localhost:7878/",
+    #     "CPU API": "ab -r -n 10000 -c 100  http://localhost:7878/cpu",
+    #     "Sleep API": "ab -r -n 50 -c 8 http://localhost:7878/sleep",
+    #     "Mixed API": "ab -r -n 50 -c 8 http://localhost:7878/mixed"
+    # }
+    cs = {
+        "CPU API": "ab -r -n 10000 -c 100  http://localhost:7878/cpu",
+    }
 
-    # cs = ["ab -n 50 -c 8 http://localhost:7878/sleep",
-    #     "ab -n 50 -c 8 http://localhost:7878/mixed"]
-
-
-    for command in cs:
+    for testcase, command in cs.items():
         # Get sequential time
         print(f"\n\n+++ running command: {command} +++")
         print("\n=== Getting sequential time ===")
@@ -123,7 +124,7 @@ def main():
         # Plotting
         plt.figure(figsize=(10, 6))
         plt.plot(valid_capacities, valid_speedups, marker='o', linestyle='-', linewidth=2)
-        plt.title('Speedup vs Queue Internal Capacity', fontsize=16)
+        plt.title(f"Speedup vs Queue Internal Capacity for {testcase}", fontsize=14)
         plt.xlabel('Queue Internal Capacity', fontsize=14)
         plt.ylabel('Speedup (Sequential / Parallel)', fontsize=14)
         plt.grid(True, linestyle='--', alpha=0.7)

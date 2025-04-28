@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 crossbeam = "0.8"
+rand = "0.8"  # Or the latest version available
+

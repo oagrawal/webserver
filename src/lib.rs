@@ -1,9 +1,10 @@
 mod queue;
-
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
 };
+use crate::queue::ArrayQueue;
+
 
 // Lock-based ThreadPool implementation
 pub struct ThreadPool {
@@ -12,13 +13,6 @@ pub struct ThreadPool {
 }
 
 impl ThreadPool {
-    /// Create a new ThreadPool.
-    ///
-    /// The size is the number of threads in the pool.
-    ///
-    /// # Panics
-    ///
-    /// The `new` function will panic if the size is zero.
     pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
         let (sender, receiver) = mpsc::channel();
@@ -44,7 +38,6 @@ impl ThreadPool {
     }
 }
 
-//graceful stopping threads
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
@@ -90,9 +83,6 @@ impl Worker {
     }
 }
 
-// Lock-free implementation
-// use crossbeam::queue::ArrayQueue;
-use crate::queue::ArrayQueue;
 
 
 pub struct LockFreeThreadPool {
@@ -149,10 +139,8 @@ impl LockFreeThreadPool {
 
 impl Drop for LockFreeThreadPool {
     fn drop(&mut self) {
-        // Signal workers to stop
         self.running.store(false, std::sync::atomic::Ordering::SeqCst);
-        
-        // Join all worker threads
+
         for worker in &mut self.workers {
             if let Some(thread) = worker.thread.take() {
                 println!("Shutting down worker {}", worker.id);
@@ -170,14 +158,12 @@ impl LockFreeWorker {
     ) -> LockFreeWorker {
         let thread = thread::spawn(move || {
             while running.load(std::sync::atomic::Ordering::SeqCst) {
-                // Try to pop a job from the queue
                 match job_queue.pop() {
                     Some(job) => {
                         println!("Worker {id} got a job; executing.");
                         job();
                     }
                     None => {
-                        // No job available, yield to other threads
                         thread::yield_now();
                     }
                 }

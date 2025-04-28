@@ -5,18 +5,17 @@ use std::{
     net::{TcpListener, TcpStream},
     thread,
     time::Duration,
+    
 };
+use rand::Rng;  
 
 use server::{LockFreeThreadPool, ThreadPool};
 
 fn main() {
-    // Parse command line arguments
-    // Default values
-    let mut implementation = "1"; // Default to implementation 1
-    let mut workers = 8;          // Default worker count
-    let mut queue_size = 100;     // Default queue size
+    let mut implementation = "1"; 
+    let mut workers = 8;          
+    let mut queue_size = 100;     
 
-    // Parse command line arguments
     let args: Vec<String> = env::args().collect();
     let mut i = 1;
 
@@ -70,7 +69,6 @@ fn main() {
                 return;
             },
             imp if !imp.starts_with('-') => {
-                // Positional argument for implementation
                 implementation = imp;
                 i += 1;
             },
@@ -103,7 +101,7 @@ fn main() {
         },
         "2" => {
             // Lock-free queue with thread pool
-            println!("Running implementation 1: Lock-free queue with thread pool");
+            println!("Running implementation 2: Lock-free queue with thread pool");
             let pool = LockFreeThreadPool::new(workers, queue_size);
             
             for stream in listener.incoming() {
@@ -115,7 +113,7 @@ fn main() {
         },
         "3" => {
             // Lock-based queue with thread pool
-            println!("Running implementation 2: Lock-based queue with thread pool");
+            println!("Running implementation 3: Lock-based queue with thread pool");
             let pool = ThreadPool::new(workers);
             
             for stream in listener.incoming() {
@@ -127,7 +125,7 @@ fn main() {
         },
         "4" => {
             // thread-per-connection
-            println!("Running implementation 3: thread-per-connection");
+            println!("Running implementation 4: thread-per-connection");
             
             for stream in listener.incoming() {
                 let stream = stream.unwrap();
@@ -145,38 +143,16 @@ fn main() {
     println!("Shutting down.");
 }
 
-/*
-fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
-
-    let (status_line, filename) = match &request_line[..] {
-        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "response.html"),
-        "GET /sleep HTTP/1.1" => {
-            thread::sleep(Duration::from_secs(10));
-            ("HTTP/1.1 200 OK", "response.html")
-        }
-        _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
-    };
-
-    let contents = fs::read_to_string(filename).unwrap();
-    let length = contents.len();
-    let response =
-        format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
-    stream.write_all(response.as_bytes()).unwrap();
-}*/
-
+// Function to handle incoming connections
 fn handle_connection(mut stream: TcpStream) {
     let buf_reader = BufReader::new(&stream);
     let request_line = match buf_reader.lines().next() {
         Some(Ok(line)) => line,
         Some(Err(_)) => {
-            // Handle I/O error
             send_error_response(&mut stream, "500 Internal Server Error", "I/O Error");
             return;
         }
         None => {
-            // No lines available (connection might have been closed)
             send_error_response(&mut stream, "400 Bad Request", "No request line");
             return;
         }
@@ -202,18 +178,14 @@ fn handle_connection(mut stream: TcpStream) {
         let result = format!("Found {} primes up to 10,000", primes.len());
         ("HTTP/1.1 200 OK", result)
     } else if request_line.starts_with("GET /sleep ") {
-        // 3. IO-Bound Workload Test - Blocking sleep operation
-        thread::sleep(Duration::from_secs(1));  // 5 second sleep
+        thread::sleep(Duration::from_secs(1));  
         let contents = fs::read_to_string("response.html").unwrap();
         ("HTTP/1.1 200 OK", contents)
     } else if request_line.starts_with("GET /mixed ") {
-        // 4. Mixed Workload with Variable Concurrency Test
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let mut rng = rand::thread_rng();  
+        let workload_type: u8 = rng.gen_range(0..3);  
         
-        match now % 3 {
+        match workload_type  {
             0 => {
                 // Baseline - quick response
                 let contents = fs::read_to_string("response.html").unwrap();
@@ -244,7 +216,6 @@ fn handle_connection(mut stream: TcpStream) {
         ("HTTP/1.1 404 NOT FOUND", contents)
     };
 
-    // Send the response
     let length = content.len();
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{content}");
 
