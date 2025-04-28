@@ -15,7 +15,7 @@ pub struct ArrayQueue<T> {
     head: CachePadded<AtomicUsize>,
     tail: CachePadded<AtomicUsize>,
     buffer: Box<[Slot<T>]>,
-    one_lap: usize,
+    generation: usize,
 }
 
 unsafe impl<T: Send> Sync for ArrayQueue<T> {}
@@ -35,11 +35,11 @@ impl<T> ArrayQueue<T> {
                 }
             })
             .collect();
-        let one_lap = (cap + 1).next_power_of_two();
+        let generation = (cap + 1).next_power_of_two();
 
         Self {
             buffer,
-            one_lap,
+            generation,
             head: CachePadded::new(AtomicUsize::new(head)),
             tail: CachePadded::new(AtomicUsize::new(tail)),
         }
@@ -49,13 +49,13 @@ impl<T> ArrayQueue<T> {
         let mut tail = self.tail.load(Ordering::Relaxed);
 
         loop {
-            let index = tail & (self.one_lap - 1);
-            let lap = tail & !(self.one_lap - 1);
+            let index = tail & (self.generation - 1);
+            let lap = tail & !(self.generation - 1);
 
             let next_tail = if index + 1 < self.capacity() {
                 tail + 1
             } else {
-                lap.wrapping_add(self.one_lap)
+                lap.wrapping_add(self.generation)
             };
 
             let slot = unsafe { self.buffer.get_unchecked(index) };
@@ -79,11 +79,11 @@ impl<T> ArrayQueue<T> {
                         tail = t;
                     }
                 }
-            } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
+            } else if stamp.wrapping_add(self.generation) == tail + 1 {
                 atomic::fence(Ordering::SeqCst);
                 let head = self.head.load(Ordering::Relaxed);
 
-                if head.wrapping_add(self.one_lap) == tail {
+                if head.wrapping_add(self.generation) == tail {
                     return Err(value);
                 }
 
@@ -99,8 +99,8 @@ impl<T> ArrayQueue<T> {
         let mut head = self.head.load(Ordering::Relaxed);
 
         loop {
-            let index = head & (self.one_lap - 1);
-            let lap = head & !(self.one_lap - 1);
+            let index = head & (self.generation - 1);
+            let lap = head & !(self.generation - 1);
 
             let slot = unsafe { self.buffer.get_unchecked(index) };
             let stamp = slot.stamp.load(Ordering::Acquire);
@@ -109,7 +109,7 @@ impl<T> ArrayQueue<T> {
                 let next = if index + 1 < self.capacity() {
                     head + 1
                 } else {
-                    lap.wrapping_add(self.one_lap)
+                    lap.wrapping_add(self.generation)
                 };
 
                 match self.head.compare_exchange_weak(
@@ -121,7 +121,7 @@ impl<T> ArrayQueue<T> {
                     Ok(_) => {
                         let value = unsafe {
                             let value = ptr::read((*slot.value.get()).as_ptr());
-                            slot.stamp.store(head.wrapping_add(self.one_lap), Ordering::Release);
+                            slot.stamp.store(head.wrapping_add(self.generation), Ordering::Release);
                             value
                         };
                         return Some(value);
@@ -159,7 +159,7 @@ impl<T> ArrayQueue<T> {
     pub fn is_full(&self) -> bool {
         let tail = self.tail.load(Ordering::SeqCst);
         let head = self.head.load(Ordering::SeqCst);
-        head.wrapping_add(self.one_lap) == tail
+        head.wrapping_add(self.generation) == tail
     }
 }
 
@@ -169,8 +169,8 @@ impl<T> Drop for ArrayQueue<T> {
             let head = *self.head.get_mut();
             let tail = *self.tail.get_mut();
 
-            let hix = head & (self.one_lap - 1);
-            let tix = tail & (self.one_lap - 1);
+            let hix = head & (self.generation - 1);
+            let tix = tail & (self.generation - 1);
 
             let len = if hix < tix {
                 tix - hix
