@@ -83,6 +83,10 @@ All implementations use Rust's `net::TcpListener` to listen on port 7878. Each i
 - Thread-per-connection model is viable but less scalable than thread pool approaches
 
 
+
+
+
+
 to run server: 
 cd server
 cargo run
