@@ -4,6 +4,10 @@
 
 This project implements and analyzes a high-performance multithreaded web server in Rust, comparing different concurrency strategies and their performance characteristics.
 
+
+https://github.com/user-attachments/assets/e9b4a654-b83c-4fb9-bdc5-396656fd35b1
+
+
 ## Project Overview
 
 This project explores the design space of concurrent web server implementations by comparing:
