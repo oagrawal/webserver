@@ -1,4 +1,4 @@
-# Multithreaded Web Server in Rust
+# Multithreaded Lock-Free Web Server in Rust
 
 ## Here is a demo of the project
 
